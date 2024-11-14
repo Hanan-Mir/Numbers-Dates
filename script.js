@@ -16,7 +16,7 @@ const account1 = {
   pin: 1111,
 
   movementsDates: [
-    '2019-11-18T21:31:17.178Z',
+    '2024-11-14T14:16:07.908Z',
     '2019-12-23T07:42:02.383Z',
     '2020-01-28T09:15:04.904Z',
     '2020-04-01T10:17:24.185Z',
@@ -36,7 +36,7 @@ const account2 = {
   pin: 2222,
 
   movementsDates: [
-    '2019-11-01T13:15:33.035Z',
+    '2024-11-14T10:55:25.405Z',
     '2019-11-30T09:48:16.867Z',
     '2019-12-25T06:04:23.907Z',
     '2020-01-25T14:18:46.235Z',
@@ -80,16 +80,31 @@ const inputClosePin = document.querySelector('.form__input--pin');
 /////////////////////////////////////////////////
 /////////////////////////////////////////////////
 containerMovements.innerHTML='';
+let calculateDate=function(date1,date2){
+   let currentDate=Math.round(Math.abs(date2-date1)/(1000*60*60*24));
+   console.log(currentDate);
+  if(currentDate===0) return 'Today';
+  if(currentDate==1) return 'Yesterday';
+  if(currentDate<=7) return `${currentDate} days ago`;
+  else{
+    let currentDay=`${date2.getDate()}`.padStart(2,0);
+    console.log(currentDay);
+    let currentMonth=date2.getMonth()+1;
+    let currentYear=date2.getFullYear();
+    return `${currentDay}/${currentMonth}/${currentYear}`;
+  }
+}
 //--------------FUNCTION FOR DISPLAYING THE MOVEMENTS FOR OUR APPLICATION----------------------------------
-const displayMovements=function(movement){
-  containerMovements.innerHTML='';
-movement.forEach(function(value,index,mov){
 
+const displayMovements=function(acc){
+  containerMovements.innerHTML='';
+acc.movements.forEach(function(value,index,mov){
+  let transactionDate=calculateDate(new Date(),new Date(acc.movementsDates[index]));
   let type=value>0?"deposit":"withdrawal";
   const transactionElement=`<div class="movements__row">
   <div class="movements__type movements__type--${type}">${index+1} ${type}</div>
-  <div class="movements__date">3 days ago</div>
-  <div class="movements__value">${value}</div>
+  <div class="movements__date">${transactionDate}</div>
+  <div class="movements__value">${value.toFixed(2)}₹</div>
 </div>
   `
   containerMovements.insertAdjacentHTML('afterbegin',transactionElement);
@@ -119,25 +134,25 @@ calcUserName(accounts);
 let totalMovementSum=function(acc){
  acc.balance=acc.movements.reduce((accu,value,index,arr)=>{ return accu+value;
 },0)
-labelBalance.textContent=`${acc.balance} EUR`;
+labelBalance.textContent=`${acc.balance.toFixed(2)} ₹`;
 }
 
 //totalMovementSum(account1);
 //-----------------calculate summary----------------------------
 const calcSummary=function(acc){
   const deposits=acc.movements.filter(amount=>amount>0).reduce((acc,curVal)=>acc+curVal,0);
-  labelSumIn.textContent=`${deposits}`;
+  labelSumIn.textContent=`${deposits.toFixed(2)}`;
   const withdrawls=acc.movements.filter(amount=>amount<0).reduce((acc,currVal)=>acc+currVal,0);
-  labelSumOut.textContent=`${withdrawls}`;
+  labelSumOut.textContent=`${withdrawls.toFixed(2)}`;
   const intrests=acc.movements.filter(amount=>amount>0).map(val=>(val*acc.interestRate)/100).filter(el=>el>=1).reduce((acc,curVal)=>acc+curVal,0);
-  labelSumInterest.textContent=`${intrests}`;
+  labelSumInterest.textContent=`${intrests.toFixed(2)}`;
 }
 //calcSummary(account1.movements);
 //--------------------------update UI---------------------------
 let updateUI=function(acc){
 calcSummary(acc);
 totalMovementSum(acc);
-displayMovements(acc.movements);
+displayMovements(acc);
 }
 
 
@@ -158,24 +173,26 @@ if(currentUser?.pin===Number(inputLoginPin.value)){
   inputLoginPin.value=inputLoginUsername.value='';
   inputLoginPin.blur();
 //display movements;
-displayMovements(currentUser.movements);
+displayMovements(currentUser);
 //display summary
 calcSummary(currentUser);
 //display total movements sum
 totalMovementSum(currentUser);
 //get array dynamically 
-let myArray=Array.from(document.querySelectorAll('.movements__value'),(el)=>Number(el.textContent));
+let myArray=Array.from(document.querySelectorAll('.movements__value'),(el)=>parseInt(el.textContent));
 console.log(myArray)
 }
 })
 //----------------------------transfer function-------------------------
 btnTransfer.addEventListener('click',function(e){
   e.preventDefault();
-  let amount=Number(inputTransferAmount.value);
+  let amount=+(inputTransferAmount.value);
   let transferTo=accounts.find(acc=>acc.UserName===inputTransferTo.value);
 if(transferTo && currentUser.balance>amount &&transferTo!==currentUser.UserName &&amount >0){
-  transferTo.movements.push(amount);
-  currentUser.movements.push(amount);
+  transferTo.movements.push(Math.trunc(amount));
+  currentUser.movements.push(Math.trunc(amount));
+  transferTo.movementsDates.push(new Date().toISOString());
+  currentUser.movementsDates.push(new Date().toISOString());
   updateUI(currentUser);
   
 }
@@ -184,7 +201,7 @@ inputTransferAmount.value=inputTransferTo.value=' ';
 //--------------------------------delete account---------------
 btnClose.addEventListener('click',function(e){
 e.preventDefault();
-const userPin=Number(inputClosePin.value);
+const userPin=+(inputClosePin.value);
 const userCloseName=inputCloseUsername.value;
 if(userCloseName===currentUser.UserName && userPin===currentUser.pin){
   let getIndex=accounts.findIndex((acc)=>acc.UserName===userCloseName)
@@ -198,10 +215,11 @@ inputClosePin.value=inputCloseUsername.value='';
 btnLoan.addEventListener('click',function(e){
   e.preventDefault();
   console.log('loan passed');
-  const loanAmount=Number(inputLoanAmount.value);
+  const loanAmount=+(inputLoanAmount.value);
   let checkEligbility=currentUser.movements.some(el=>el>=loanAmount*0.1);
   if(checkEligbility){
-    currentUser.movements.push(loanAmount);
+    currentUser.movements.push(Math.trunc(loanAmount));
+    currentUser.movementsDates.push(new Date().toISOString());
     updateUI(currentUser);
   }
 })
@@ -212,13 +230,68 @@ btnSort.addEventListener('click',function(e){
   //console.log('sort clicked');
   if(sorted===false){
     currentUser.movements.sort((a,b)=>a-b);
-displayMovements(currentUser.movements);
+displayMovements(currentUser);
 sorted=true;
   }
   else{
     sorted=false;
     currentUser.movements.sort((a,b)=>b-a);
-    displayMovements(currentUser.movements); 
+    displayMovements(currentUser); 
   }
 })
 // LECTURES
+//--------------------------------------------CONVERTING AND CHECKING NUMBERS---------------------------------
+console.log(typeof Number('23'));
+console.log(typeof +'23');
+console.log(23+ +'23');
+console.log(Number.parseInt(24.990));
+console.log(Number.parseInt('32px'));
+console.log(Number.parseInt('x89'));
+console.log(Number.parseFloat(3.445));
+console.log(Number.parseFloat('2.3px'));
+console.log(Number.parseFloat('px2.9'));
+console.log(isNaN('Hello'));
+console.log(isNaN(90));
+console.log(isNaN(90/0));
+console.log(isFinite('Hello'));
+console.log(isFinite(90/0));
+console.log(isNaN('23'));
+console.log(isFinite('40'));
+console.log(Number.parseInt('24'));
+console.log(isFinite(' '));
+console.log(isNaN(' '));
+//-------------------------------------------------Math functions---------------------------------------------
+console.log(Math.sqrt(25));
+console.log(25**1/5);
+console.log(Math.max(23,89,100,0,99));
+console.log(Math.min(0,33,44,11,-1));
+console.log(Math.max(90,'1000',99,100));
+console.log(Math.random()*4);
+console.log(Math.round(Math.random()*3));
+console.log(Math.trunc(Math.random()*10000));
+console.log(Math.floor(3.77));
+console.log(Math.ceil(3.77));
+console.log((Math.random()*1000).toFixed(4));
+//--------------------------------------------------date function------------------------------------------
+let currentDate=new Date();
+console.log(currentDate);
+console.log(currentDate.getTime());
+console.log(currentDate.getFullYear());
+console.log(currentDate.getMonth());//0 based month
+console.log(currentDate.getDay());
+console.log(currentDate.toLocaleDateString());
+console.log(currentDate.toLocaleTimeString());
+console.log(new Date('2019-11-01T13:15:33.035Z').toLocaleDateString());
+console.log(new Date(2090,8,7,12));
+
+
+
+
+
+
+
+
+
+
+
+
