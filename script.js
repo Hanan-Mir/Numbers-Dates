@@ -50,6 +50,11 @@ const account2 = {
 };
 
 const accounts = [account1, account2];
+const optionsDate={
+  date:'long',
+  month:'long',
+  year:'number'
+}
 
 /////////////////////////////////////////////////
 // Elements
@@ -87,24 +92,53 @@ let calculateDate=function(date1,date2){
   if(currentDate==1) return 'Yesterday';
   if(currentDate<=7) return `${currentDate} days ago`;
   else{
-    let currentDay=`${date2.getDate()}`.padStart(2,0);
-    console.log(currentDay);
-    let currentMonth=date2.getMonth()+1;
-    let currentYear=date2.getFullYear();
-    return `${currentDay}/${currentMonth}/${currentYear}`;
+    // let currentDay=`${date2.getDate()}`.padStart(2,0);
+    // console.log(currentDay);
+    // let currentMonth=date2.getMonth()+1;
+    // let currentYear=date2.getFullYear();
+    // return `${currentDay}/${currentMonth}/${currentYear}`;
+    return `${new Intl.DateTimeFormat('en-En').format(date2)}`;
   }
 }
 //--------------FUNCTION FOR DISPLAYING THE MOVEMENTS FOR OUR APPLICATION----------------------------------
+const calcCurrencyFormat=function(acc,value){
+return `${new Intl.NumberFormat(acc.locale,{style:'currency',
+currency:acc.currency}).format(value)}`
+}
+let timer,tick;
+let calculateTimer=function(){
+  timer=30;
+tick=setInterval(function(){
+let minute=String(Math.trunc(timer/60)).padStart(2,0);
+let seconds=String(timer%60).padStart(2,0);
+labelTimer.textContent=`${minute}:${seconds}`;
+
+//logout user
+if(timer===0){
+  //change opacity
+  containerApp.style.opacity=0;
+  //display user Name
+  labelWelcome.textContent=`Login to get started`;
+  clearInterval(tick);
+}
+timer--;
+},1000)
+return timer;
+}
+
+
+
 
 const displayMovements=function(acc){
   containerMovements.innerHTML='';
 acc.movements.forEach(function(value,index,mov){
+  let displayCurrency=calcCurrencyFormat(acc,value);
   let transactionDate=calculateDate(new Date(),new Date(acc.movementsDates[index]));
   let type=value>0?"deposit":"withdrawal";
   const transactionElement=`<div class="movements__row">
   <div class="movements__type movements__type--${type}">${index+1} ${type}</div>
   <div class="movements__date">${transactionDate}</div>
-  <div class="movements__value">${value.toFixed(2)}₹</div>
+  <div class="movements__value">${displayCurrency}</div>
 </div>
   `
   containerMovements.insertAdjacentHTML('afterbegin',transactionElement);
@@ -134,7 +168,7 @@ calcUserName(accounts);
 let totalMovementSum=function(acc){
  acc.balance=acc.movements.reduce((accu,value,index,arr)=>{ return accu+value;
 },0)
-labelBalance.textContent=`${acc.balance.toFixed(2)} ₹`;
+labelBalance.textContent=`${calcCurrencyFormat(acc,acc.balance)} `;
 }
 
 //totalMovementSum(account1);
@@ -165,6 +199,7 @@ btnLogin.addEventListener('click',function(e){
   e.preventDefault();
 currentUser=accounts.find((acc)=>acc.UserName===inputLoginUsername.value)
 if(currentUser?.pin===Number(inputLoginPin.value)){
+  
   //change opacity
   containerApp.style.opacity=1;
   //display user Name
@@ -172,6 +207,11 @@ if(currentUser?.pin===Number(inputLoginPin.value)){
   // remove the login and pin 
   inputLoginPin.value=inputLoginUsername.value='';
   inputLoginPin.blur();
+  let currentDate= new Date();
+  console.log(currentDate);
+  labelDate.textContent=new Intl.DateTimeFormat('en-IN',{
+    dateStyle:'full'
+  }).format(currentDate);
 //display movements;
 displayMovements(currentUser);
 //display summary
@@ -181,6 +221,12 @@ totalMovementSum(currentUser);
 //get array dynamically 
 let myArray=Array.from(document.querySelectorAll('.movements__value'),(el)=>parseInt(el.textContent));
 console.log(myArray)
+//timer function
+if(timer){
+  clearInterval(tick);
+}
+calculateTimer();
+
 }
 })
 //----------------------------transfer function-------------------------
@@ -196,7 +242,12 @@ if(transferTo && currentUser.balance>amount &&transferTo!==currentUser.UserName 
   updateUI(currentUser);
   
 }
-inputTransferAmount.value=inputTransferTo.value=' ';
+inputTransferAmount.value=inputTransferTo.value='';
+if(timer){
+  clearInterval(tick);
+}
+timer=30;
+calculateTimer();
 })
 //--------------------------------delete account---------------
 btnClose.addEventListener('click',function(e){
@@ -210,6 +261,11 @@ if(userCloseName===currentUser.UserName && userPin===currentUser.pin){
   
 }
 inputClosePin.value=inputCloseUsername.value='';
+if(timer){
+  clearInterval(tick);
+}
+timer=30;
+calculateTimer();
 })
 //-----------------------------------loan request------------------------------
 btnLoan.addEventListener('click',function(e){
@@ -217,11 +273,18 @@ btnLoan.addEventListener('click',function(e){
   console.log('loan passed');
   const loanAmount=+(inputLoanAmount.value);
   let checkEligbility=currentUser.movements.some(el=>el>=loanAmount*0.1);
+  setTimeout(()=>{
   if(checkEligbility){
     currentUser.movements.push(Math.trunc(loanAmount));
     currentUser.movementsDates.push(new Date().toISOString());
     updateUI(currentUser);
+  }},3000)
+  inputLoanAmount.value='';
+  if(timer){
+    clearInterval(tick);
   }
+  timer=30;
+  calculateTimer();
 })
 //--------------------------------sort movements---------------------------------
 let sorted=false;
@@ -238,6 +301,11 @@ sorted=true;
     currentUser.movements.sort((a,b)=>b-a);
     displayMovements(currentUser); 
   }
+  if(timer){
+    clearInterval(tick);
+  }
+  timer=30;
+  calculateTimer();
 })
 // LECTURES
 //--------------------------------------------CONVERTING AND CHECKING NUMBERS---------------------------------
@@ -283,15 +351,22 @@ console.log(currentDate.toLocaleDateString());
 console.log(currentDate.toLocaleTimeString());
 console.log(new Date('2019-11-01T13:15:33.035Z').toLocaleDateString());
 console.log(new Date(2090,8,7,12));
+//---------------------------------------setTimeout Function-----------------------------------------------
+let ingredientItems=['Myonese','Momoes']
+let orderFood=setTimeout((ing1,ing2)=>{console.log(`Order ready with the ingredients ${ing1} and ${ing2}`)},3000,...ingredientItems);
+console.log('Order Placed Sucessfully');
+//---------------------------clear a timeout--------------------------------------------------------------
+if(ingredientItems.includes('Cheese')){
+  console.log(`Ordered canceled`);
+  clearTimeout(orderFood);
+}
+//------------------------------------setInterval function-------------------------------------------------
+//setInterval(()=>console.log('I love you'),1000);
 
-
-
-
-
-
-
-
-
-
-
-
+// setInterval(()=>{
+// let currentDuration=new Date();
+//  let currentHour=currentDuration.getHours();
+//  let currentMinute=String(currentDuration.getMinutes()).padStart(2,0);
+//  let currentSecond=currentDuration.getSeconds();
+//  console.log(`The time is ${currentHour}:${currentMinute}:${currentSecond}`);
+//  },1000);
